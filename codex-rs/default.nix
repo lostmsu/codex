@@ -7,13 +7,24 @@
   pkg-config,
   lib,
   stdenv,
+  fetchurl,
   version ? "0.0.0",
   ...
 }:
+let
+  rustyV8ArchiveX86_64Linux = fetchurl {
+    url = "https://github.com/denoland/rusty_v8/releases/download/v146.4.0/librusty_v8_release_x86_64-unknown-linux-gnu.a.gz";
+    hash = "sha256-5ktNmeSuKTouhGJEqJuAF4uhA4LBP7WRwfppaPUpEVM=";
+  };
+in
 rustPlatform.buildRustPackage (_: {
-  env.PKG_CONFIG_PATH = lib.makeSearchPathOutput "dev" "lib/pkgconfig" (
-    [ openssl ] ++ lib.optionals stdenv.isLinux [ libcap ]
-  );
+  env = {
+    PKG_CONFIG_PATH = lib.makeSearchPathOutput "dev" "lib/pkgconfig" (
+      [ openssl ] ++ lib.optionals stdenv.isLinux [ libcap ]
+    );
+  } // lib.optionalAttrs (stdenv.hostPlatform.system == "x86_64-linux") {
+    RUSTY_V8_ARCHIVE = rustyV8ArchiveX86_64Linux;
+  };
   pname = "codex-rs";
   inherit version;
   cargoLock.lockFile = ./Cargo.lock;
@@ -45,6 +56,11 @@ rustPlatform.buildRustPackage (_: {
     "runfiles-0.1.0" = "sha256-uJpVLcQh8wWZA3GPv9D8Nt43EOirajfDJ7eq/FB+tek=";
     "tokio-tungstenite-0.28.0" = "sha256-hJAkvWxDjB9A9GqansahWhTmj/ekcelslLUTtwqI7lw=";
     "tungstenite-0.27.0" = "sha256-AN5wql2X2yJnQ7lnDxpljNw0Jua40GtmT+w3wjER010=";
+    "libwebrtc-0.3.26" = "sha256-0HPuwaGcqpuG+Pp6z79bCuDu/DyE858VZSYr3DKZD9o=";
+    "livekit-protocol-0.7.1" = "sha256-0HPuwaGcqpuG+Pp6z79bCuDu/DyE858VZSYr3DKZD9o=";
+    "livekit-runtime-0.4.0" = "sha256-0HPuwaGcqpuG+Pp6z79bCuDu/DyE858VZSYr3DKZD9o=";
+    "webrtc-sys-0.3.24" = "sha256-0HPuwaGcqpuG+Pp6z79bCuDu/DyE858VZSYr3DKZD9o=";
+    "webrtc-sys-build-0.3.13" = "sha256-0HPuwaGcqpuG+Pp6z79bCuDu/DyE858VZSYr3DKZD9o=";
   };
 
   meta = with lib; {
