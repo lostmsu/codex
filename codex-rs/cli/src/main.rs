@@ -71,6 +71,9 @@ mod migrate_rollouts;
 mod plugin_cmd;
 mod queue_cmd;
 mod remote_control_cmd;
+#[cfg(test)]
+#[path = "remote_options_tests.rs"]
+mod remote_options_tests;
 #[cfg(target_os = "windows")]
 mod sandbox_setup;
 mod state_db_recovery;
@@ -945,7 +948,8 @@ struct FeatureToggles {
 struct InteractiveRemoteOptions {
     /// Connect the TUI to a remote app server endpoint.
     ///
-    /// Accepted forms: `ws://host:port`, `wss://host:port`, `unix://`, or `unix://PATH`.
+    /// Accepted forms: `ws://host[:port][/path]`, `wss://host[:port][/path]`, `unix://`,
+    /// or `unix://PATH`. WebSocket ports default to 80 for ws and 443 for wss.
     #[arg(long = "remote", value_name = "ADDR")]
     remote: Option<String>,
 

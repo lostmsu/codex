@@ -367,35 +367,6 @@ fn remove_legacy_tui_log_file(codex_home: &Path) {
     let _ = std::fs::remove_file(codex_home.join("log").join(TUI_LOG_FILE_NAME));
 }
 
-fn remote_addr_has_explicit_port(addr: &str, parsed: &Url) -> bool {
-    let Some(host) = parsed.host_str() else {
-        return false;
-    };
-    if parsed.port().is_some() {
-        return true;
-    }
-
-    let Some((_, rest)) = addr.split_once("://") else {
-        return false;
-    };
-    let authority_end = rest.find(['/', '?', '#']).unwrap_or(rest.len());
-    let authority = &rest[..authority_end];
-    let host_and_port = authority
-        .rsplit_once('@')
-        .map_or(authority, |(_, host_and_port)| host_and_port);
-    let explicit_default_port = match parsed.scheme() {
-        "ws" => 80,
-        "wss" => 443,
-        _ => return false,
-    };
-    let expected_host = if host.contains(':') {
-        format!("[{host}]")
-    } else {
-        host.to_string()
-    };
-    host_and_port == format!("{expected_host}:{explicit_default_port}")
-}
-
 fn websocket_url_supports_auth_token(parsed: &Url) -> bool {
     match (parsed.scheme(), parsed.host()) {
         ("wss", Some(_)) => true,
@@ -423,14 +394,12 @@ pub fn resolve_remote_addr(addr: &str) -> color_eyre::Result<RemoteAppServerEndp
         Ok(parsed) => parsed,
         Err(_) => {
             color_eyre::eyre::bail!(
-                "invalid remote address `{addr}`; expected `ws://host:port`, `wss://host:port`, `unix://`, or `unix://PATH`"
+                "invalid remote address `{addr}`; expected `ws://host[:port][/path]`, `wss://host[:port][/path]`, `unix://`, or `unix://PATH`"
             );
         }
     };
     if matches!(parsed.scheme(), "ws" | "wss")
         && parsed.host_str().is_some()
-        && remote_addr_has_explicit_port(addr, &parsed)
-        && parsed.path() == "/"
         && parsed.query().is_none()
         && parsed.fragment().is_none()
     {
@@ -441,7 +410,7 @@ pub fn resolve_remote_addr(addr: &str) -> color_eyre::Result<RemoteAppServerEndp
     }
 
     color_eyre::eyre::bail!(
-        "invalid remote address `{addr}`; expected `ws://host:port`, `wss://host:port`, `unix://`, or `unix://PATH`"
+        "invalid remote address `{addr}`; expected `ws://host[:port][/path]`, `wss://host[:port][/path]`, `unix://`, or `unix://PATH`"
     );
 }
 
@@ -2855,24 +2824,62 @@ requires_openai_auth = {requires_openai_auth}
 
     #[test]
     fn resolve_remote_addr_accepts_websocket_url() {
-        assert_eq!(
-            resolve_remote_addr("ws://127.0.0.1:4500").expect("ws URL should normalize"),
-            RemoteAppServerEndpoint::WebSocket {
-                websocket_url: "ws://127.0.0.1:4500/".to_string(),
-                auth_token: None,
-            }
-        );
+        for (addr, expected_url) in [
+            ("ws://127.0.0.1:4500", "ws://127.0.0.1:4500/"),
+            ("ws://127.0.0.1", "ws://127.0.0.1/"),
+            ("ws://localhost:80", "ws://localhost/"),
+            (
+                "ws://localhost/codex-app-server",
+                "ws://localhost/codex-app-server",
+            ),
+            (
+                "ws://127.0.0.1:4500/codex-app-server",
+                "ws://127.0.0.1:4500/codex-app-server",
+            ),
+            ("ws://[::1]/codex-app-server", "ws://[::1]/codex-app-server"),
+        ] {
+            assert_eq!(
+                resolve_remote_addr(addr).expect("ws URL should normalize"),
+                RemoteAppServerEndpoint::WebSocket {
+                    websocket_url: expected_url.to_string(),
+                    auth_token: None,
+                },
+                "{addr}"
+            );
+        }
     }
 
     #[test]
     fn resolve_remote_addr_accepts_secure_websocket_url() {
-        assert_eq!(
-            resolve_remote_addr("wss://example.com:443").expect("wss URL should normalize"),
-            RemoteAppServerEndpoint::WebSocket {
-                websocket_url: "wss://example.com/".to_string(),
-                auth_token: None,
-            }
-        );
+        for (addr, expected_url) in [
+            ("wss://example.com:443", "wss://example.com/"),
+            ("wss://example.com", "wss://example.com/"),
+            (
+                "wss://example.invalid/codex-app-server",
+                "wss://example.invalid/codex-app-server",
+            ),
+            (
+                "wss://example.invalid:443/codex-app-server",
+                "wss://example.invalid/codex-app-server",
+            ),
+            (
+                "wss://example.com:8443/proxy/codex%20app/",
+                "wss://example.com:8443/proxy/codex%20app/",
+            ),
+            (
+                "wss://[::1]:443/codex-app-server",
+                "wss://[::1]/codex-app-server",
+            ),
+        ] {
+            assert_eq!(
+                resolve_remote_addr(addr).expect("wss URL should normalize"),
+                RemoteAppServerEndpoint::WebSocket {
+                    websocket_url: expected_url.to_string(),
+                    auth_token: None,
+                },
+                "{addr}"
+            );
+        }
     }
 
     #[test]
@@ -2914,14 +2921,16 @@ requires_openai_auth = {requires_openai_auth}
     #[test]
     fn resolve_remote_addr_rejects_invalid_remote_addresses() {
         for addr in [
-            "ws://127.0.0.1",
-            "wss://example.com",
             "127.0.0.1:4500",
             "https://127.0.0.1:4500",
+            "ws://",
+            "wss://example.com:65536/codex-app-server",
+            "wss://example.com/codex-app-server?query=value",
+            "wss://example.com/codex-app-server#fragment",
         ] {
             let err = resolve_remote_addr(addr).expect_err("invalid remote addresses should fail");
             assert!(err.to_string().contains(
-                "expected `ws://host:port`, `wss://host:port`, `unix://`, or `unix://PATH`"
+                "expected `ws://host[:port][/path]`, `wss://host[:port][/path]`, `unix://`, or `unix://PATH`"
             ));
         }
     }
