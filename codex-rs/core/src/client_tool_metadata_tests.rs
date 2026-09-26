@@ -49,6 +49,7 @@ fn request_with_metadata_and_source(
         tool_choice: "auto".to_string(),
         parallel_tool_calls: true,
         reasoning: None,
+        max_output_tokens: None,
         store: false,
         stream: true,
         stream_options: None,

@@ -149,6 +149,7 @@ async fn models_client_hits_models_endpoint() {
             truncation_policy: TruncationPolicyConfig::bytes(/*limit*/ 10_000),
             supports_image_detail_original: false,
             context_window: Some(272_000),
+            max_output_tokens: None,
             max_context_window: None,
             auto_compact_token_limit: None,
             comp_hash: None,
