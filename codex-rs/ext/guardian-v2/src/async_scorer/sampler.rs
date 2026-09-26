@@ -239,6 +239,7 @@ impl LunaSampler {
                 summary: None,
                 context: Some(ReasoningContext::AllTurns),
             }),
+            max_output_tokens: None,
             store: false,
             stream: true,
             stream_options: None,

@@ -203,6 +203,7 @@ struct ModelClientState {
     session_source: SessionSource,
     originator: String,
     model_verbosity: Option<VerbosityConfig>,
+    model_max_output_tokens: Option<i64>,
     content_item_kinds_enabled: bool,
     reasoning_effort_override_enabled: bool,
     enable_request_compression: bool,
@@ -340,6 +341,7 @@ fn responses_request_properties_match(
         tool_choice: previous_tool_choice,
         parallel_tool_calls: previous_parallel_tool_calls,
         reasoning: previous_reasoning,
+        max_output_tokens: previous_max_output_tokens,
         store: previous_store,
         stream: previous_stream,
         stream_options: _,
@@ -358,6 +360,7 @@ fn responses_request_properties_match(
         tool_choice: current_tool_choice,
         parallel_tool_calls: current_parallel_tool_calls,
         reasoning: current_reasoning,
+        max_output_tokens: current_max_output_tokens,
         store: current_store,
         stream: current_stream,
         stream_options: _,
@@ -375,6 +378,7 @@ fn responses_request_properties_match(
         && previous_tool_choice == current_tool_choice
         && previous_parallel_tool_calls == current_parallel_tool_calls
         && previous_reasoning == current_reasoning
+        && previous_max_output_tokens == current_max_output_tokens
         && previous_store == current_store
         && previous_stream == current_stream
         // Stream options control delivery for this response, not the context
@@ -487,6 +491,7 @@ impl ModelClient {
         session_source: SessionSource,
         originator: String,
         model_verbosity: Option<VerbosityConfig>,
+        model_max_output_tokens: Option<i64>,
         content_item_kinds_enabled: bool,
         reasoning_effort_override_enabled: bool,
         enable_request_compression: bool,
@@ -524,6 +529,7 @@ impl ModelClient {
                 session_source,
                 originator,
                 model_verbosity,
+                model_max_output_tokens,
                 content_item_kinds_enabled,
                 reasoning_effort_override_enabled,
                 enable_request_compression,
@@ -990,6 +996,10 @@ impl ModelClient {
             tool_choice: "auto".to_string(),
             parallel_tool_calls: prompt.parallel_tool_calls && !model_info.use_responses_lite,
             reasoning: Some(reasoning),
+            max_output_tokens: self
+                .state
+                .model_max_output_tokens
+                .or(model_info.max_output_tokens),
             store: false,
             stream: true,
             stream_options,

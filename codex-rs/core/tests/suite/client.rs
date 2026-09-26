@@ -108,6 +108,40 @@ const TEST_WINDOW_ID: &str = "test-thread:0";
 const TEST_INSTALLATION_ID: &str = "11111111-1111-4111-8111-111111111111";
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn responses_request_uses_configured_or_model_output_token_limit() -> anyhow::Result<()> {
+    skip_if_no_network!(Ok(()));
+    for (model_limit, config_limit, expected_limit) in [
+        (None, None, None),
+        (Some(8_192), None, Some(8_192)),
+        (Some(8_192), Some(16_384), Some(16_384)),
+    ] {
+        let server = start_mock_server().await;
+        let response_mock = mount_sse_once(&server, sse(vec![ev_completed("done")])).await;
+        let test = test_codex()
+            .with_model("gpt-5.4")
+            .with_model_info_override("gpt-5.4", move |model| {
+                model.max_output_tokens = model_limit;
+            })
+            .with_config(move |config| {
+                config.model_max_output_tokens = config_limit;
+            })
+            .build_with_auto_env(&server)
+            .await?;
+        test.submit_turn("hello").await?;
+
+        assert_eq!(
+            response_mock
+                .single_request()
+                .body_json()
+                .get("max_output_tokens")
+                .cloned(),
+            expected_limit.map(|limit| json!(limit)),
+        );
+    }
+    Ok(())
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn responses_request_preserves_flex_without_catalog_support_or_fast_mode()
 -> anyhow::Result<()> {
     skip_if_no_network!(Ok(()));
@@ -1663,6 +1697,7 @@ async fn send_request_with_provider(provider: ModelProviderInfo) {
         SessionSource::Exec,
         "test_originator".to_string(),
         config.model_verbosity,
+        config.model_max_output_tokens,
         config.features.enabled(Feature::ContentItemKinds),
         config.features.enabled(Feature::ReasoningEffortOverride),
         /*enable_request_compression*/ false,
@@ -3161,6 +3196,7 @@ async fn azure_responses_request_does_not_store_and_preserves_prefixed_item_ids(
         SessionSource::Exec,
         "test_originator".to_string(),
         config.model_verbosity,
+        config.model_max_output_tokens,
         config.features.enabled(Feature::ContentItemKinds),
         config.features.enabled(Feature::ReasoningEffortOverride),
         /*enable_request_compression*/ false,

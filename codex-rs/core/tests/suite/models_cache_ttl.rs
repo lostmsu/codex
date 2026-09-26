@@ -669,6 +669,7 @@ fn test_remote_model(slug: &str, priority: i32) -> ModelInfo {
         truncation_policy: TruncationPolicyConfig::bytes(/*limit*/ 10_000),
         supports_image_detail_original: false,
         context_window: Some(272_000),
+        max_output_tokens: None,
         max_context_window: None,
         auto_compact_token_limit: None,
         comp_hash: None,

@@ -1703,6 +1703,7 @@ impl Session {
                     session_configuration.session_source.clone(),
                     session_configuration.originator.clone(),
                     config.model_verbosity,
+                    config.model_max_output_tokens,
                     config.features.enabled(Feature::ContentItemKinds),
                     reasoning_effort_override_enabled,
                     config.features.enabled(Feature::EnableRequestCompression),

@@ -97,6 +97,7 @@ const DEMO_SKILL_CONTENTS: &str =
 fn catalog_model_info() -> ModelInfo {
     ModelInfo {
         context_window: None,
+        max_output_tokens: None,
         max_context_window: None,
         include_skills_usage_instructions: false,
         ..model_info_from_slug("test-model")

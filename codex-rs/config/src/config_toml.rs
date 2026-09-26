@@ -175,6 +175,10 @@ pub struct ConfigToml {
     /// Size of the context window for the model, in tokens.
     pub model_context_window: Option<i64>,
 
+    /// Override the Responses API output token limit for the selected model.
+    #[schemars(range(min = 1))]
+    pub model_max_output_tokens: Option<i64>,
+
     /// Token usage threshold triggering auto-compaction of conversation history.
     pub model_auto_compact_token_limit: Option<i64>,
 

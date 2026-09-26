@@ -330,6 +330,7 @@ impl MemoryStartupContext {
             session_source.clone(),
             config_snapshot.originator,
             config.model_verbosity,
+            config.model_max_output_tokens,
             config.features.enabled(Feature::ContentItemKinds),
             config.features.enabled(Feature::ReasoningEffortOverride),
             config.features.enabled(Feature::EnableRequestCompression),

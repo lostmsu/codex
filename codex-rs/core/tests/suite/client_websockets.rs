@@ -2874,6 +2874,7 @@ async fn websocket_harness_with_provider_options_and_auth(
         SessionSource::Exec,
         "test_originator".to_string(),
         config.model_verbosity,
+        config.model_max_output_tokens,
         config.features.enabled(Feature::ContentItemKinds),
         config.features.enabled(Feature::ReasoningEffortOverride),
         /*enable_request_compression*/ false,

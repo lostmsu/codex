@@ -229,6 +229,29 @@ async fn load_config_normalizes_relative_cwd_override() -> std::io::Result<()> {
 }
 
 #[tokio::test]
+async fn load_config_rejects_nonpositive_model_max_output_tokens() -> anyhow::Result<()> {
+    let codex_home = tempdir()?;
+    for limit in [0, -1] {
+        let error = Config::load_from_base_config_with_overrides(
+            ConfigToml {
+                model_max_output_tokens: Some(limit),
+                ..Default::default()
+            },
+            ConfigOverrides::default(),
+            codex_home.abs(),
+        )
+        .await
+        .expect_err("output token limit must be positive");
+        assert_eq!(error.kind(), std::io::ErrorKind::InvalidInput);
+        assert_eq!(
+            error.to_string(),
+            "model_max_output_tokens must be greater than zero"
+        );
+    }
+    Ok(())
+}
+
+#[tokio::test]
 async fn load_config_applies_optional_mcp_startup_grace() -> std::io::Result<()> {
     let codex_home = tempdir()?;
     let config_toml: ConfigToml = toml::from_str("mcp_optional_startup_grace_ms = 2500")

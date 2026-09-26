@@ -643,6 +643,7 @@ fn remote_model_with_auto_review_override(slug: &str, review_model: &str) -> Mod
         truncation_policy: TruncationPolicyConfig::bytes(/*limit*/ 10_000),
         supports_image_detail_original: false,
         context_window: Some(272_000),
+        max_output_tokens: None,
         max_context_window: None,
         guardian: None,
         auto_compact_token_limit: None,
